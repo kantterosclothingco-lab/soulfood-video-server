@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Soulfood video signaling server is running");
+  res.status(200).send("Soulfood video signaling server is running");
 });
 
 const server = http.createServer(app);
@@ -28,7 +28,7 @@ io.on("connection", (socket) => {
   socket.on("join-room", ({ roomId, userType }) => {
     socket.join(roomId);
     socketRoomMap.set(socket.id, roomId);
-    console.log(`${userType} joined room ${roomId}`);
+    console.log(`${userType || "user"} joined room ${roomId}`);
     socket.to(roomId).emit("user-joined");
   });
 
@@ -77,5 +77,5 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Soulfood video server running on port ${PORT}`);
+  console.log(`Soulfood video signaling server is running on port ${PORT}`);
 });
