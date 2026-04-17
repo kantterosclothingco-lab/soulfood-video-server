@@ -4,7 +4,6 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -17,16 +16,18 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
+
+const socketRoomMap = new Map();
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // Join room
   socket.on("join-room", ({ roomId, userType }) => {
     socket.join(roomId);
+    socketRoomMap.set(socket.id, roomId);
 
     console.log(`${userType} joined room ${roomId}`);
 
@@ -36,7 +37,26 @@ io.on("connection", (socket) => {
     });
   });
 
-  // WebRTC offer
+  socket.on("leave-room", ({ roomId, reason }) => {
+    socket.leave(roomId);
+    socketRoomMap.delete(socket.id);
+
+    socket.to(roomId).emit("user-left", {
+      socketId: socket.id,
+      reason: reason || "left-call",
+    });
+  });
+
+  socket.on("chat-message", ({ roomId, message, sender }) => {
+    console.log("Chat message:", roomId, sender, message);
+
+    socket.to(roomId).emit("chat-message", {
+      message,
+      sender,
+      time: new Date().toISOString(),
+    });
+  });
+
   socket.on("webrtc-offer", ({ roomId, offer }) => {
     socket.to(roomId).emit("webrtc-offer", {
       offer,
@@ -44,7 +64,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // WebRTC answer
   socket.on("webrtc-answer", ({ roomId, answer }) => {
     socket.to(roomId).emit("webrtc-answer", {
       answer,
@@ -52,7 +71,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // ICE candidates
   socket.on("webrtc-ice-candidate", ({ roomId, candidate }) => {
     socket.to(roomId).emit("webrtc-ice-candidate", {
       candidate,
@@ -61,12 +79,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    const roomId = socketRoomMap.get(socket.id);
+
+    if (roomId) {
+      socket.to(roomId).emit("user-left", {
+        socketId: socket.id,
+        reason: "disconnected",
+      });
+      socketRoomMap.delete(socket.id);
+    }
+
     console.log("User disconnected:", socket.id);
   });
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
