@@ -29,27 +29,17 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     socketRoomMap.set(socket.id, roomId);
 
-    console.log(`${userType} joined room ${roomId}`);
-
-    socket.to(roomId).emit("user-joined", {
-      socketId: socket.id,
-      userType,
-    });
+    socket.to(roomId).emit("user-joined");
   });
 
-  socket.on("leave-room", ({ roomId, reason }) => {
+  socket.on("leave-room", ({ roomId }) => {
     socket.leave(roomId);
     socketRoomMap.delete(socket.id);
 
-    socket.to(roomId).emit("user-left", {
-      socketId: socket.id,
-      reason: reason || "left-call",
-    });
+    socket.to(roomId).emit("user-left");
   });
 
   socket.on("chat-message", ({ roomId, message, sender }) => {
-    console.log("Chat message:", roomId, sender, message);
-
     socket.to(roomId).emit("chat-message", {
       message,
       sender,
@@ -58,43 +48,29 @@ io.on("connection", (socket) => {
   });
 
   socket.on("webrtc-offer", ({ roomId, offer }) => {
-    socket.to(roomId).emit("webrtc-offer", {
-      offer,
-      from: socket.id,
-    });
+    socket.to(roomId).emit("webrtc-offer", { offer });
   });
 
   socket.on("webrtc-answer", ({ roomId, answer }) => {
-    socket.to(roomId).emit("webrtc-answer", {
-      answer,
-      from: socket.id,
-    });
+    socket.to(roomId).emit("webrtc-answer", { answer });
   });
 
   socket.on("webrtc-ice-candidate", ({ roomId, candidate }) => {
-    socket.to(roomId).emit("webrtc-ice-candidate", {
-      candidate,
-      from: socket.id,
-    });
+    socket.to(roomId).emit("webrtc-ice-candidate", { candidate });
   });
 
   socket.on("disconnect", () => {
     const roomId = socketRoomMap.get(socket.id);
 
     if (roomId) {
-      socket.to(roomId).emit("user-left", {
-        socketId: socket.id,
-        reason: "disconnected",
-      });
+      socket.to(roomId).emit("user-left");
       socketRoomMap.delete(socket.id);
     }
-
-    console.log("User disconnected:", socket.id);
   });
 });
 
 const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Video server running on port ${PORT}`);
 });
